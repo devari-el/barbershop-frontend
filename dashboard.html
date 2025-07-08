@@ -139,7 +139,7 @@
     <script>3001
         const API_URL = 'barbershop-api-production-f305.up.railway.app';
         const token = localStorage.getItem('authToken');
-        if (!token) { window.location.href = './login.html'; }
+        if (!token) { window.location.href = './index.html'; }
 
         // --- Variáveis de Estado ---
         let currentView = 'appointments';
@@ -193,7 +193,7 @@
 
         // --- Funções Utilitárias ---
         function showSuccessToast(message) { successToast.textContent = message; successToast.classList.add('toast-show'); setTimeout(() => { successToast.classList.remove('toast-show'); }, 3000); }
-        function logout() { localStorage.removeItem('authToken'); window.location.href = './login.html'; }
+        function logout() { localStorage.removeItem('authToken'); window.location.href = './index.html'; }
         function formatTime(dateString) { return new Date(dateString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); }
 
         // --- Lógica de Navegação ---
