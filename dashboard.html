@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Gestor de Barbearia</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        .modal-enter, .toast-enter { transition: opacity 0.3s ease; }
+        .toast-show { transform: translateY(0) !important; opacity: 1 !important; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+        .nav-link.active { background-color: #111827; color: white; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200">
+
+    <!-- Container Principal -->
+    <div class="flex flex-col md:flex-row min-h-screen">
+        
+        <aside class="w-full md:w-64 bg-gray-800 p-6 shadow-lg flex flex-col">
+            <div>
+                <h1 class="text-2xl font-bold text-white mb-8">Gestor<span class="text-blue-500">Barber</span></h1>
+                <nav id="main-nav">
+                    <ul>
+                        <li><a href="#appointments" class="nav-link flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg font-semibold transition-colors">Agendamentos</a></li>
+                        <li><a href="#clients" class="nav-link flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg font-semibold transition-colors">Clientes</a></li>
+                        <li><a href="#services" class="nav-link flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg font-semibold transition-colors">Serviços</a></li>
+                        <li><a href="#history" class="nav-link flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg font-semibold transition-colors">Histórico</a></li>
+                    </ul>
+                </nav>
+            </div>
+            <div class="mt-auto"><button id="logout-button" class="w-full text-left px-4 py-3 text-red-400 hover:bg-red-900/50 rounded-lg transition-colors">Sair</button></div>
+        </aside>
+
+        <main class="flex-1 p-6 md:p-10">
+            <!-- Seção de Agendamentos -->
+            <section id="appointments-section" class="view">
+                <header class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
+                    <div>
+                        <h2 class="text-3xl font-bold text-white">Agenda</h2>
+                        <input type="date" id="date-picker" class="bg-gray-700 border border-gray-600 rounded-lg text-white p-2 mt-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <button id="add-appointment-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors w-full sm:w-auto">+ Novo Agendamento</button>
+                </header>
+                <div id="appointments-list" class="space-y-4"></div>
+            </section>
+
+            <!-- Seção de Clientes -->
+            <section id="clients-section" class="view hidden">
+                <header class="flex justify-between items-center mb-8">
+                    <h2 class="text-3xl font-bold text-white">Meus Clientes</h2>
+                    <button id="add-client-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">+ Novo Cliente</button>
+                </header>
+                <div id="clients-list" class="space-y-4"></div>
+            </section>
+            
+            <!-- Seção de Serviços -->
+            <section id="services-section" class="view hidden">
+                <header class="flex justify-between items-center mb-8">
+                    <h2 class="text-3xl font-bold text-white">Meus Serviços</h2>
+                    <button id="add-service-button" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-colors">+ Novo Serviço</button>
+                </header>
+                <div id="services-list" class="space-y-4"></div>
+            </section>
+
+            <!-- Seção de Histórico -->
+            <section id="history-section" class="view hidden">
+                <header class="flex justify-between items-center mb-8">
+                    <h2 class="text-3xl font-bold text-white">Histórico de Agendamentos</h2>
+                </header>
+                <div id="history-list" class="space-y-4"></div>
+            </section>
+        </main>
+    </div>
+
+    <!-- MODAIS -->
+    <!-- Modal de Novo Agendamento -->
+    <div id="appointment-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md"><form id="appointment-form" class="p-8 space-y-6"><h3 class="text-2xl font-bold text-white">Novo Agendamento</h3><div><label for="client-select" class="text-sm font-medium text-gray-300">Cliente</label><select id="client-select" required class="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></select></div><div><label for="service-select" class="text-sm font-medium text-gray-300">Serviço</label><select id="service-select" required class="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></select></div><div class="grid grid-cols-2 gap-4"><div><label for="appointment-date" class="text-sm font-medium text-gray-300">Data</label><input type="date" id="appointment-date" required class="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></div><div><label for="appointment-time" class="text-sm font-medium text-gray-300">Hora</label><input type="time" id="appointment-time" required class="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></div></div><div id="modal-error-message" class="hidden p-3 text-sm text-red-300 bg-red-900/50 rounded-lg text-center"></div><div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-appointment-btn" class="px-6 py-2 text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">Cancelar</button><button type="submit" class="px-6 py-2 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors">Salvar</button></div></form></div>
+    </div>
+    
+    <!-- Modal de Cliente -->
+    <div id="client-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+            <form id="client-form" class="p-8 space-y-6">
+                <h3 id="client-modal-title" class="text-2xl font-bold text-white">Novo Cliente</h3>
+                <input type="hidden" id="client-id">
+                <div><label for="client-name" class="text-sm font-medium text-gray-300">Nome Completo</label><input type="text" id="client-name" required class="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+                <div><label for="client-phone" class="text-sm font-medium text-gray-300">Telefone (com DDD)</label><input type="tel" id="client-phone" placeholder="5511999998888" required class="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+                <div id="client-modal-error" class="hidden p-3 text-sm text-red-300 bg-red-900/50 rounded-lg text-center"></div>
+                <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-client-modal-btn" class="px-6 py-2 text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-lg">Cancelar</button><button type="submit" class="px-6 py-2 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Salvar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Serviço -->
+    <div id="service-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-md">
+            <form id="service-form" class="p-8 space-y-6">
+                <h3 id="service-modal-title" class="text-2xl font-bold text-white">Novo Serviço</h3>
+                <input type="hidden" id="service-id">
+                <div><label for="service-name" class="text-sm font-medium text-gray-300">Nome do Serviço</label><input type="text" id="service-name" required class="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+                <div><label for="service-duration" class="text-sm font-medium text-gray-300">Duração (em minutos)</label><input type="number" id="service-duration" min="1" required class="mt-1 block w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"></div>
+                <div id="service-modal-error" class="hidden p-3 text-sm text-red-300 bg-red-900/50 rounded-lg text-center"></div>
+                <div class="flex justify-end space-x-4 pt-4"><button type="button" id="cancel-service-modal-btn" class="px-6 py-2 text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-lg">Cancelar</button><button type="submit" class="px-6 py-2 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg">Salvar</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação de Cancelamento -->
+    <div id="cancel-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm p-8 text-center"><h3 class="text-xl font-bold text-white mb-4">Confirmar Cancelamento</h3><p class="text-gray-300 mb-6">Você tem certeza que deseja cancelar este agendamento?</p><div class="flex justify-center space-x-4"><button id="confirm-cancel-btn" class="px-6 py-2 font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg">Sim, cancelar</button><button id="close-cancel-modal-btn" class="px-6 py-2 text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-lg">Voltar</button></div></div>
+    </div>
+    
+    <!-- Modal de Confirmação de Deleção -->
+    <div id="delete-confirm-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 rounded-lg shadow-xl w-full max-w-sm p-8 text-center">
+            <h3 id="delete-modal-title" class="text-xl font-bold text-white mb-4">Confirmar Exclusão</h3>
+            <p id="delete-modal-text" class="text-gray-300 mb-6">Você tem certeza?</p>
+            <div class="flex justify-center space-x-4">
+                <button id="confirm-delete-btn" class="px-6 py-2 font-semibold text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors">Sim, excluir</button>
+                <button id="close-delete-modal-btn" class="px-6 py-2 text-gray-300 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">Voltar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="success-toast" class="fixed bottom-5 right-5 bg-green-600 text-white py-3 px-6 rounded-lg shadow-lg transform translate-y-20 opacity-0"></div>
+
+    <script>3001
+        const API_URL = 'barbershop-api-production-f305.up.railway.app';
+        const token = localStorage.getItem('authToken');
+        if (!token) { window.location.href = './login.html'; }
+
+        // --- Variáveis de Estado ---
+        let currentView = 'appointments';
+        let currentAppointmentToCancel = null;
+        let itemToDelete = { id: null, type: null };
+
+        // --- Seletores de DOM ---
+        const mainNav = document.getElementById('main-nav');
+        const views = document.querySelectorAll('.view');
+        const logoutButton = document.getElementById('logout-button');
+        
+        const appointmentsList = document.getElementById('appointments-list');
+        const datePicker = document.getElementById('date-picker');
+        const addAppointmentButton = document.getElementById('add-appointment-button');
+        const appointmentModal = document.getElementById('appointment-modal');
+        const appointmentForm = document.getElementById('appointment-form');
+        const cancelAppointmentBtn = document.getElementById('cancel-appointment-btn');
+        const clientSelect = document.getElementById('client-select');
+        const serviceSelect = document.getElementById('service-select');
+        const modalErrorMessage = document.getElementById('modal-error-message');
+        
+        const clientsList = document.getElementById('clients-list');
+        const addClientButton = document.getElementById('add-client-button');
+        const clientModal = document.getElementById('client-modal');
+        const clientForm = document.getElementById('client-form');
+        const cancelClientModalBtn = document.getElementById('cancel-client-modal-btn');
+        const clientModalTitle = document.getElementById('client-modal-title');
+        const clientModalError = document.getElementById('client-modal-error');
+
+        const servicesList = document.getElementById('services-list');
+        const addServiceButton = document.getElementById('add-service-button');
+        const serviceModal = document.getElementById('service-modal');
+        const serviceForm = document.getElementById('service-form');
+        const cancelServiceModalBtn = document.getElementById('cancel-service-modal-btn');
+        const serviceModalTitle = document.getElementById('service-modal-title');
+        const serviceModalError = document.getElementById('service-modal-error');
+
+        const historyList = document.getElementById('history-list');
+        
+        const cancelConfirmModal = document.getElementById('cancel-confirm-modal');
+        const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+        const closeCancelModalBtn = document.getElementById('close-cancel-modal-btn');
+        
+        const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+        const confirmDeleteBtn = document.getElementById('confirm-delete-btn');
+        const closeDeleteModalBtn = document.getElementById('close-delete-modal-btn');
+        const deleteModalTitle = document.getElementById('delete-modal-title');
+        const deleteModalText = document.getElementById('delete-modal-text');
+        
+        const successToast = document.getElementById('success-toast');
+
+        // --- Funções Utilitárias ---
+        function showSuccessToast(message) { successToast.textContent = message; successToast.classList.add('toast-show'); setTimeout(() => { successToast.classList.remove('toast-show'); }, 3000); }
+        function logout() { localStorage.removeItem('authToken'); window.location.href = './login.html'; }
+        function formatTime(dateString) { return new Date(dateString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); }
+
+        // --- Lógica de Navegação ---
+        function switchView(viewId) {
+            views.forEach(view => view.classList.add('hidden'));
+            document.getElementById(`${viewId}-section`).classList.remove('hidden');
+            mainNav.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
+            mainNav.querySelector(`a[href="#${viewId}"]`).classList.add('active');
+            currentView = viewId;
+            if (viewId === 'clients') fetchClients();
+            else if (viewId === 'services') fetchServices();
+            else if (viewId === 'history') fetchHistory();
+            else if (viewId === 'appointments') {
+                const today = new Date(datePicker.value || Date.now());
+                fetchAppointments(today);
+            }
+        }
+        
+        // --- Lógica de Agendamentos ---
+        async function fetchAppointments(date) {
+            appointmentsList.innerHTML = `<p class="text-gray-400">Carregando agendamentos...</p>`;
+            const dateString = date.toISOString().split('T')[0];
+            try {
+                const response = await fetch(`${API_URL}/api/appointments?date=${dateString}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!response.ok) { if (response.status === 401 || response.status === 403) logout(); throw new Error('Falha ao buscar agendamentos.'); }
+                const appointments = await response.json();
+                displayAppointments(appointments);
+            } catch (error) { appointmentsList.innerHTML = `<p class="text-red-400">Erro ao carregar agendamentos.</p>`; }
+        }
+
+        function displayAppointments(appointments) {
+            appointmentsList.innerHTML = '';
+            const scheduledAppointments = appointments.filter(app => app.status === 'scheduled');
+            if (scheduledAppointments.length === 0) {
+                appointmentsList.innerHTML = `<p class="text-gray-400 text-center py-10 bg-gray-800 rounded-lg">Nenhum agendamento para este dia.</p>`;
+            } else {
+                scheduledAppointments.forEach(app => {
+                    const el = document.createElement('div');
+                    el.className = 'bg-gray-800 p-4 rounded-lg flex justify-between items-center';
+                    el.innerHTML = `
+                        <div class="flex items-center"><div class="w-16 text-center mr-4"><p class="text-xl font-bold text-white">${formatTime(app.appointment_time)}</p></div><div><p class="font-semibold text-white">${app.client_name}</p><p class="text-sm text-gray-400">${app.service_name} (${app.duration_minutes} min)</p></div></div>
+                        <div class="flex items-center gap-4"><span class="px-2 py-1 text-sm font-semibold rounded-full text-green-300 bg-green-800/50">Agendado</span>
+                        <button data-appointment-id="${app.id}" class="cancel-btn text-xs text-red-400 hover:text-red-300">Cancelar</button></div>`;
+                    appointmentsList.appendChild(el);
+                });
+            }
+        }
+        
+        async function openAppointmentModal() {
+            appointmentModal.classList.remove('hidden');
+            try {
+                const [clientsRes, servicesRes] = await Promise.all([ fetch(`${API_URL}/api/clients`, { headers: { 'Authorization': `Bearer ${token}` } }), fetch(`${API_URL}/api/services`, { headers: { 'Authorization': `Bearer ${token}` } }) ]);
+                const clients = await clientsRes.json();
+                const services = await servicesRes.json();
+                clientSelect.innerHTML = '<option value="">Selecione um cliente</option>';
+                clients.forEach(c => clientSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+                serviceSelect.innerHTML = '<option value="">Selecione um serviço</option>';
+                services.forEach(s => serviceSelect.innerHTML += `<option value="${s.id}">${s.name}</option>`);
+            } catch (error) { modalErrorMessage.textContent = "Erro ao carregar dados."; modalErrorMessage.classList.remove('hidden'); }
+        }
+
+        function closeAppointmentModal() { appointmentModal.classList.add('hidden'); appointmentForm.reset(); modalErrorMessage.classList.add('hidden'); }
+        
+        function openCancelModal(id) { currentAppointmentToCancel = id; cancelConfirmModal.classList.remove('hidden'); }
+        function closeCancelModal() { currentAppointmentToCancel = null; cancelConfirmModal.classList.add('hidden'); }
+
+        async function handleCancelAppointment() {
+            if (!currentAppointmentToCancel) return;
+            try {
+                const response = await fetch(`${API_URL}/api/appointments/${currentAppointmentToCancel}/cancel`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` } });
+                if (!response.ok) throw new Error('Falha ao cancelar.');
+                showSuccessToast('Agendamento cancelado!');
+                fetchAppointments(new Date(datePicker.value + 'T00:00:00'));
+            } catch (error) { showSuccessToast('Erro ao cancelar.'); } finally { closeCancelModal(); }
+        }
+
+        // --- Lógica de Histórico ---
+        async function fetchHistory() {
+            historyList.innerHTML = `<p class="text-gray-400">Carregando histórico...</p>`;
+            try {
+                const response = await fetch(`${API_URL}/api/appointments`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!response.ok) throw new Error('Falha ao buscar histórico.');
+                const appointments = await response.json();
+                displayHistory(appointments);
+            } catch (error) { historyList.innerHTML = `<p class="text-red-400">Erro ao carregar histórico.</p>`; }
+        }
+
+        function displayHistory(appointments) {
+            historyList.innerHTML = '';
+            if (appointments.length === 0) {
+                historyList.innerHTML = `<p class="text-gray-400 text-center py-10 bg-gray-800 rounded-lg">Nenhum agendamento no histórico.</p>`;
+            } else {
+                appointments.forEach(app => {
+                    const el = document.createElement('div');
+                    const isCanceled = app.status === 'canceled';
+                    const statusColor = isCanceled ? 'text-red-300 bg-red-800/50' : 'text-green-300 bg-green-800/50';
+                    const appointmentDate = new Date(app.appointment_time).toLocaleDateString('pt-BR');
+                    el.className = `bg-gray-800 p-4 rounded-lg flex justify-between items-center ${isCanceled ? 'opacity-60' : ''}`;
+                    el.innerHTML = `
+                        <div class="flex items-center"><div class="w-24 text-center mr-4"><p class="font-bold text-white">${appointmentDate}</p><p class="text-sm text-gray-400">${formatTime(app.appointment_time)}</p></div><div><p class="font-semibold text-white">${app.client_name}</p><p class="text-sm text-gray-400">${app.service_name}</p></div></div>
+                        <div><span class="px-2 py-1 text-sm font-semibold rounded-full ${statusColor}">${app.status}</span></div>`;
+                    historyList.appendChild(el);
+                });
+            }
+        }
+
+        // --- Lógica de Clientes ---
+        async function fetchClients() {
+            clientsList.innerHTML = `<p class="text-gray-400">Carregando clientes...</p>`;
+            try {
+                const response = await fetch(`${API_URL}/api/clients`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!response.ok) throw new Error('Falha ao buscar clientes.');
+                const clients = await response.json();
+                displayClients(clients);
+            } catch (error) { clientsList.innerHTML = `<p class="text-red-400">Erro ao carregar clientes.</p>`; }
+        }
+
+        function displayClients(clients) {
+            clientsList.innerHTML = '';
+            if (clients.length === 0) {
+                clientsList.innerHTML = `<p class="text-gray-400 text-center py-10 bg-gray-800 rounded-lg">Nenhum cliente cadastrado.</p>`;
+            } else {
+                clients.forEach(client => {
+                    const clientEl = document.createElement('div');
+                    clientEl.className = 'bg-gray-800 p-4 rounded-lg flex justify-between items-center';
+                    clientEl.innerHTML = `<div><p class="font-semibold text-white">${client.name}</p><p class="text-sm text-gray-400">${client.phone_number}</p></div>
+                    <div class="flex gap-4"><button data-id="${client.id}" data-name="${client.name}" data-phone="${client.phone_number}" class="edit-client-btn text-xs text-blue-400 hover:text-blue-300">Editar</button>
+                    <button data-id="${client.id}" data-name="${client.name}" class="delete-client-btn text-xs text-red-400 hover:text-red-300">Excluir</button></div>`;
+                    clientsList.appendChild(clientEl);
+                });
+            }
+        }
+
+        function openClientModal(client = null) {
+            clientForm.reset();
+            if (client) {
+                clientModalTitle.textContent = 'Editar Cliente';
+                document.getElementById('client-id').value = client.id;
+                document.getElementById('client-name').value = client.name;
+                document.getElementById('client-phone').value = client.phone;
+            } else {
+                clientModalTitle.textContent = 'Novo Cliente';
+                document.getElementById('client-id').value = '';
+            }
+            clientModal.classList.remove('hidden');
+        }
+
+        function closeClientModal() { clientModal.classList.add('hidden'); clientModalError.classList.add('hidden'); }
+
+        // --- Lógica de Serviços ---
+        async function fetchServices() {
+            servicesList.innerHTML = `<p class="text-gray-400">Carregando serviços...</p>`;
+            try {
+                const response = await fetch(`${API_URL}/api/services`, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!response.ok) throw new Error('Falha ao buscar serviços.');
+                const services = await response.json();
+                displayServices(services);
+            } catch (error) { servicesList.innerHTML = `<p class="text-red-400">Erro ao carregar serviços.</p>`; }
+        }
+
+        function displayServices(services) {
+            servicesList.innerHTML = '';
+            if (services.length === 0) {
+                servicesList.innerHTML = `<p class="text-gray-400 text-center py-10 bg-gray-800 rounded-lg">Nenhum serviço cadastrado.</p>`;
+            } else {
+                services.forEach(service => {
+                    const serviceEl = document.createElement('div');
+                    serviceEl.className = 'bg-gray-800 p-4 rounded-lg flex justify-between items-center';
+                    serviceEl.innerHTML = `<div><p class="font-semibold text-white">${service.name}</p><p class="text-sm text-gray-400">${service.duration_minutes} minutos</p></div>
+                    <div class="flex gap-4"><button data-id="${service.id}" data-name="${service.name}" data-duration="${service.duration_minutes}" class="edit-service-btn text-xs text-blue-400 hover:text-blue-300">Editar</button>
+                    <button data-id="${service.id}" data-name="${service.name}" class="delete-service-btn text-xs text-red-400 hover:text-red-300">Excluir</button></div>`;
+                    servicesList.appendChild(serviceEl);
+                });
+            }
+        }
+
+        function openServiceModal(service = null) {
+            serviceForm.reset();
+            if (service) {
+                serviceModalTitle.textContent = 'Editar Serviço';
+                document.getElementById('service-id').value = service.id;
+                document.getElementById('service-name').value = service.name;
+                document.getElementById('service-duration').value = service.duration;
+            } else {
+                serviceModalTitle.textContent = 'Novo Serviço';
+                document.getElementById('service-id').value = '';
+            }
+            serviceModal.classList.remove('hidden');
+        }
+
+        function closeServiceModal() { serviceModal.classList.add('hidden'); serviceModalError.classList.add('hidden'); }
+
+        // --- Lógica de Deleção ---
+        function openDeleteModal(id, type, name) {
+            itemToDelete = { id, type };
+            deleteModalTitle.textContent = `Excluir ${type.charAt(0).toUpperCase() + type.slice(1)}`;
+            deleteModalText.textContent = `Tem certeza que deseja excluir "${name}"? Esta ação não pode ser desfeita.`;
+            deleteConfirmModal.classList.remove('hidden');
+        }
+
+        function closeDeleteModal() {
+            itemToDelete = { id: null, type: null };
+            deleteConfirmModal.classList.add('hidden');
+        }
+
+        async function handleConfirmDelete() {
+            if (!itemToDelete.id || !itemToDelete.type) return;
+            const { id, type } = itemToDelete;
+            const url = `${API_URL}/api/${type}s/${id}`;
+            try {
+                const response = await fetch(url, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                if (!response.ok) { throw new Error(`Falha ao excluir.`); }
+                showSuccessToast(`${type.charAt(0).toUpperCase() + type.slice(1)} excluído com sucesso!`);
+                if (type === 'client') fetchClients();
+                if (type === 'service') fetchServices();
+            } catch (error) { showSuccessToast(error.message); } finally { closeDeleteModal(); }
+        }
+
+        // --- Event Listeners ---
+        mainNav.addEventListener('click', (e) => { if (e.target.tagName === 'A') { e.preventDefault(); switchView(e.target.hash.substring(1)); } });
+        logoutButton.addEventListener('click', logout);
+        
+        addAppointmentButton.addEventListener('click', () => openAppointmentModal());
+        cancelAppointmentBtn.addEventListener('click', closeAppointmentModal);
+        appointmentModal.addEventListener('click', (e) => { if (e.target === appointmentModal) closeAppointmentModal(); });
+        datePicker.addEventListener('change', (e) => fetchAppointments(new Date(e.target.value + 'T00:00:00')));
+        appointmentsList.addEventListener('click', (e) => { if (e.target.classList.contains('cancel-btn')) openCancelModal(e.target.dataset.appointmentId); });
+        closeCancelModalBtn.addEventListener('click', closeCancelModal);
+        confirmCancelBtn.addEventListener('click', handleCancelAppointment);
+        appointmentForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const body = { client_id: clientSelect.value, service_id: serviceSelect.value, appointment_time: new Date(`${appointmentForm['appointment-date'].value}T${appointmentForm['appointment-time'].value}`).toISOString() };
+            try {
+                const response = await fetch(`${API_URL}/api/appointments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Erro ao salvar.');
+                closeAppointmentModal();
+                showSuccessToast('Agendamento criado com sucesso!');
+                fetchAppointments(new Date(datePicker.value + 'T00:00:00'));
+            } catch (error) { modalErrorMessage.textContent = error.message; modalErrorMessage.classList.remove('hidden'); }
+        });
+
+        addClientButton.addEventListener('click', () => openClientModal());
+        cancelClientModalBtn.addEventListener('click', closeClientModal);
+        clientModal.addEventListener('click', (e) => { if (e.target === clientModal) closeClientModal(); });
+        clientsList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('edit-client-btn')) {
+                openClientModal({ id: e.target.dataset.id, name: e.target.dataset.name, phone: e.target.dataset.phone });
+            } else if (e.target.classList.contains('delete-client-btn')) {
+                openDeleteModal(e.target.dataset.id, 'client', e.target.dataset.name);
+            }
+        });
+        clientForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('client-id').value;
+            const name = document.getElementById('client-name').value;
+            const phone_number = document.getElementById('client-phone').value;
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `${API_URL}/api/clients/${id}` : `${API_URL}/api/clients`;
+            try {
+                const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ name, phone_number }) });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Erro ao salvar cliente.');
+                showSuccessToast(`Cliente ${id ? 'atualizado' : 'criado'} com sucesso!`);
+                closeClientModal();
+                fetchClients();
+            } catch (error) { clientModalError.textContent = error.message; clientModalError.classList.remove('hidden'); }
+        });
+
+        addServiceButton.addEventListener('click', () => openServiceModal());
+        cancelServiceModalBtn.addEventListener('click', closeServiceModal);
+        serviceModal.addEventListener('click', (e) => { if (e.target === serviceModal) closeServiceModal(); });
+        servicesList.addEventListener('click', (e) => {
+            if (e.target.classList.contains('edit-service-btn')) {
+                openServiceModal({ id: e.target.dataset.id, name: e.target.dataset.name, duration: e.target.dataset.duration });
+            } else if (e.target.classList.contains('delete-service-btn')) {
+                openDeleteModal(e.target.dataset.id, 'service', e.target.dataset.name);
+            }
+        });
+        serviceForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('service-id').value;
+            const name = document.getElementById('service-name').value;
+            const duration_minutes = document.getElementById('service-duration').value;
+            const method = id ? 'PUT' : 'POST';
+            const url = id ? `${API_URL}/api/services/${id}` : `${API_URL}/api/services`;
+            try {
+                const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ name, duration_minutes }) });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.message || 'Erro ao salvar serviço.');
+                showSuccessToast(`Serviço ${id ? 'atualizado' : 'criado'} com sucesso!`);
+                closeServiceModal();
+                fetchServices();
+            } catch (error) { serviceModalError.textContent = error.message; serviceModalError.classList.remove('hidden'); }
+        });
+        
+        confirmDeleteBtn.addEventListener('click', handleConfirmDelete);
+        closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
+
+        // --- Inicialização ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            datePicker.value = today.toISOString().split('T')[0];
+            switchView('appointments');
+        });
+    </script>
+</body>
+</html>
