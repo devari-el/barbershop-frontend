@@ -29,7 +29,9 @@
         
         <aside class="w-full md:w-64 bg-gray-800 p-6 shadow-lg flex flex-col">
             <div>
-                <h1 class="text-2xl font-bold text-white mb-8">Gestor<span class="text-blue-500">Barber</span></h1>
+            <a href="./dashboard.html" title="Recarregar Dashboard">
+                <h1 id="logo-text" class="text-2xl font-bold text-white mb-8 break-words">Gestor<span class="text-blue-500">Barber</span></h1>
+            </a>
                 <nav id="main-nav">
                     <ul>
                         <li><a href="#appointments" class="nav-link flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg font-semibold transition-colors">Agendamentos</a></li>
@@ -149,6 +151,7 @@
         // --- Seletores de DOM ---
         const mainNav = document.getElementById('main-nav');
         const views = document.querySelectorAll('.view');
+        const logoText = document.getElementById('logo-text');
         const logoutButton = document.getElementById('logout-button');
         
         const appointmentsList = document.getElementById('appointments-list');
@@ -195,6 +198,19 @@
         function showSuccessToast(message) { successToast.textContent = message; successToast.classList.add('toast-show'); setTimeout(() => { successToast.classList.remove('toast-show'); }, 3000); }
         function logout() { localStorage.removeItem('authToken'); window.location.href = './index.html'; }
         function formatTime(dateString) { return new Date(dateString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); }
+        function parseJwt(token) {
+            try {
+                const base64Url = token.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                return JSON.parse(jsonPayload);
+            } catch (e) {
+                console.error("Erro ao decodificar o token:", e);
+                return null;
+            }
+        }
 
         // --- Lógica de Navegação ---
         function switchView(viewId) {
@@ -497,6 +513,16 @@
         document.addEventListener('DOMContentLoaded', () => {
             const today = new Date();
             datePicker.value = today.toISOString().split('T')[0];
+
+            // Personaliza o logo com o nome da barbearia
+        const tokenData = parseJwt(token);
+        if (tokenData && tokenData.name) {
+            logoText.textContent = tokenData.name;
+            if (tokenData.name.length > 15) {
+                logoText.classList.add('text-xl');
+                logoText.classList.remove('text-2xl');
+            }
+        }
             switchView('appointments');
         });
     </script>
