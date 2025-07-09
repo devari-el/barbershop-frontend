@@ -140,8 +140,10 @@
 
     <div id="success-toast" class="fixed bottom-5 right-5 bg-green-600 text-white py-3 px-6 rounded-lg shadow-lg transform translate-y-20 opacity-0"></div>
 
+    <script src="./js/config.js"></script>
+
     <script>3001
-        const API_URL = 'https://barbershop-api-production-f305.up.railway.app';
+        const API_URL = getApiUrl();
         const token = localStorage.getItem('authToken');
         if (!token) { window.location.href = './index.html'; }
 
