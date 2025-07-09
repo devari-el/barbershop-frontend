@@ -29,9 +29,11 @@
         
         <aside class="w-full md:w-64 bg-gray-800 p-6 shadow-lg flex flex-col">
             <div>
-            <a href="./dashboard.html" title="Recarregar Dashboard">
-                <h1 id="logo-text" class="text-2xl font-bold text-white mb-8 break-words">Gestor<span class="text-blue-500">Barber</span></h1>
-            </a>
+                <a href="./dashboard.html" id="logo-container" title="Recarregar Dashboard" class="flex items-center gap-3 mb-8">
+                    <!-- O conteúdo do logo será gerado pelo JavaScript -->
+                    <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-xl">G</div>
+                    <span class="text-xl font-bold text-white break-words">GestorBarber</span>
+                </a>
                 <nav id="main-nav">
                     <ul>
                         <li><a href="#appointments" class="nav-link flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 rounded-lg font-semibold transition-colors">Agendamentos</a></li>
@@ -151,7 +153,7 @@
         // --- Seletores de DOM ---
         const mainNav = document.getElementById('main-nav');
         const views = document.querySelectorAll('.view');
-        const logoText = document.getElementById('logo-text');
+        const logoContainer = document.getElementById('logo-container');
         const logoutButton = document.getElementById('logout-button');
         
         const appointmentsList = document.getElementById('appointments-list');
@@ -211,7 +213,23 @@
                 return null;
             }
         }
+        function generateLogo(name) {
+            if (!name) return;
+            const firstLetter = name.charAt(0).toUpperCase();
 
+            // Simples hash para escolher uma cor com base no nome
+            const colors = ['bg-blue-600', 'bg-red-600', 'bg-green-600', 'bg-yellow-600', 'bg-indigo-600', 'bg-purple-600', 'bg-pink-600'];
+            const colorIndex = name.charCodeAt(0) % colors.length;
+            const bgColor = colors[colorIndex];
+
+            const logoHTML = `
+                <div class="w-10 h-10 ${bgColor} rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0">
+                    ${firstLetter}
+                </div>
+                <span class="text-xl font-bold text-white break-words">${name}</span>
+            `;
+            logoContainer.innerHTML = logoHTML;
+        }
         // --- Lógica de Navegação ---
         function switchView(viewId) {
             views.forEach(view => view.classList.add('hidden'));
@@ -514,14 +532,10 @@
             const today = new Date();
             datePicker.value = today.toISOString().split('T')[0];
 
-            // Personaliza o logo com o nome da barbearia
+        // Personaliza o logo com o nome da barbearia
         const tokenData = parseJwt(token);
         if (tokenData && tokenData.name) {
-            logoText.textContent = tokenData.name;
-            if (tokenData.name.length > 15) {
-                logoText.classList.add('text-xl');
-                logoText.classList.remove('text-2xl');
-            }
+            generateLogo(tokenData.name);
         }
             switchView('appointments');
         });
