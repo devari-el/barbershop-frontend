@@ -243,18 +243,28 @@
             else if (viewId === 'services') fetchServices();
             else if (viewId === 'history') fetchHistory();
             else if (viewId === 'appointments') {
-                const today = new Date(datePicker.value || Date.now());
-                fetchAppointments(today);
+                // **MODIFICADO** para passar a string diretamente
+                const newAppointmentDate = appointmentForm['appointment-date'].value;
+                datePicker.value = newAppointmentDate; // Atualiza o seletor principal
+                fetchAppointments(newAppointmentDate); // Recarrega a lista para a data correta
             }
         }
         
         // --- Lógica de Agendamentos ---
-        async function fetchAppointments(date) {
+
+        async function fetchAppointments(dateString) {
             appointmentsList.innerHTML = `<p class="text-gray-400">Carregando agendamentos...</p>`;
-            const dateString = date.toISOString().split('T')[0];
             try {
-                const response = await fetch(`${API_URL}/api/appointments?date=${dateString}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (!response.ok) { if (response.status === 401 || response.status === 403) logout(); throw new Error('Falha ao buscar agendamentos.'); }
+                // Constrói a URL dinamicamente. 
+                // Se dateString existir, adiciona o parâmetro de data.
+                const url = dateString 
+                    ? `/api/appointments?date=${dateString}` 
+                    : '/api/appointments';
+
+                const response = await fetchApi(url);
+                if (!response.ok) {
+                    throw new Error('Falha ao buscar agendamentos.');
+                }
                 const appointments = await response.json();
                 displayAppointments(appointments);
             } catch (error) { appointmentsList.innerHTML = `<p class="text-red-400">Erro ao carregar agendamentos.</p>`; }
@@ -263,16 +273,40 @@
         function displayAppointments(appointments) {
             appointmentsList.innerHTML = '';
             const scheduledAppointments = appointments.filter(app => app.status === 'scheduled');
+
+            // Verifica se há um filtro de data ativo
+            const isDateFiltered = datePicker.value !== '';
+
             if (scheduledAppointments.length === 0) {
                 appointmentsList.innerHTML = `<p class="text-gray-400 text-center py-10 bg-gray-800 rounded-lg">Nenhum agendamento para este dia.</p>`;
             } else {
+                // Ordena os agendamentos pela data/hora
+                scheduledAppointments.sort((a, b) => new Date(a.appointment_time) - new Date(b.appointment_time));
+                
                 scheduledAppointments.forEach(app => {
                     const el = document.createElement('div');
                     el.className = 'bg-gray-800 p-4 rounded-lg flex justify-between items-center';
+
+                    // Formata a data (dd/mm/aaaa) apenas se o filtro de data não estiver ativo
+                    const dateHtml = !isDateFiltered 
+                        ? `<p class="text-xs text-gray-400 mt-1">${new Date(app.appointment_time).toLocaleDateString('pt-BR')}</p>` 
+                        : '';
+
                     el.innerHTML = `
-                        <div class="flex items-center"><div class="w-16 text-center mr-4"><p class="text-xl font-bold text-white">${formatTime(app.appointment_time)}</p></div><div><p class="font-semibold text-white">${app.client_name}</p><p class="text-sm text-gray-400">${app.service_name} (${app.duration_minutes} min)</p></div></div>
-                        <div class="flex items-center gap-4"><span class="px-2 py-1 text-sm font-semibold rounded-full text-green-300 bg-green-800/50">Agendado</span>
-                        <button data-appointment-id="${app.id}" class="cancel-btn text-xs text-red-400 hover:text-red-300">Cancelar</button></div>`;
+                        <div class="flex items-center">
+                            <div class="w-24 text-center mr-4">
+                                <p class="text-xl font-bold text-white">${formatTime(app.appointment_time)}</p>
+                                ${dateHtml}
+                            </div>
+                            <div>
+                                <p class="font-semibold text-white">${app.client_name}</p>
+                                <p class="text-sm text-gray-400">${app.service_name} (${app.duration_minutes} min)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="px-2 py-1 text-sm font-semibold rounded-full text-green-300 bg-green-800/50">Agendado</span>
+                            <button data-appointment-id="${app.id}" class="cancel-btn text-xs text-red-400 hover:text-red-300">Cancelar</button>
+                        </div>`;
                     appointmentsList.appendChild(el);
                 });
             }
