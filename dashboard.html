@@ -142,10 +142,8 @@
 
     <script src="./js/config.js"></script>
 
-    <script>3001
+    <script>
         const API_URL = getApiUrl();
-        const token = localStorage.getItem('authToken');
-        if (!token) { window.location.href = './index.html'; }
 
         // --- Variáveis de Estado ---
         let currentView = 'appointments';
@@ -200,26 +198,48 @@
 
         // --- Funções Utilitárias ---
         function showSuccessToast(message) { successToast.textContent = message; successToast.classList.add('toast-show'); setTimeout(() => { successToast.classList.remove('toast-show'); }, 3000); }
-        function logout() { localStorage.removeItem('authToken'); window.location.href = './index.html'; }
-        function formatTime(dateString) { return new Date(dateString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); }
-        function parseJwt(token) {
+        
+        async function logout() {
             try {
-                const base64Url = token.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                return JSON.parse(jsonPayload);
-            } catch (e) {
-                console.error("Erro ao decodificar o token:", e);
-                return null;
+                await fetchApi('/api/auth/logout', { method: 'POST' });
+            } catch (error) {
+                console.error("Erro ao tentar fazer logout na API:", error);
+            } finally {
+                window.location.href = './index.html';
             }
         }
+
+        function formatTime(dateString) { return new Date(dateString).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Sao_Paulo' }); }
+        
+        // **NOVA FUNÇÃO** para obter a data local no formato AAAA-MM-DD
+        function getLocalDateString(date = new Date()) {
+            const year = date.getFullYear();
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const day = date.getDate().toString().padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        async function fetchApi(endpoint, options = {}) {
+            const defaultOptions = {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include'
+            };
+
+            const response = await fetch(`${API_URL}${endpoint}`, { ...defaultOptions, ...options });
+
+            if (response.status === 401) {
+                logout();
+                throw new Error('Não autorizado');
+            }
+
+            return response;
+        }
+
         function generateLogo(name) {
             if (!name) return;
             const firstLetter = name.charAt(0).toUpperCase();
-
-            // Simples hash para escolher uma cor com base no nome
             const colors = ['bg-blue-600', 'bg-red-600', 'bg-green-600', 'bg-yellow-600', 'bg-indigo-600', 'bg-purple-600', 'bg-pink-600'];
             const colorIndex = name.charCodeAt(0) % colors.length;
             const bgColor = colors[colorIndex];
@@ -232,6 +252,7 @@
             `;
             logoContainer.innerHTML = logoHTML;
         }
+
         // --- Lógica de Navegação ---
         function switchView(viewId) {
             views.forEach(view => view.classList.add('hidden'));
@@ -239,25 +260,31 @@
             mainNav.querySelectorAll('.nav-link').forEach(link => link.classList.remove('active'));
             mainNav.querySelector(`a[href="#${viewId}"]`).classList.add('active');
             currentView = viewId;
+
             if (viewId === 'clients') fetchClients();
             else if (viewId === 'services') fetchServices();
             else if (viewId === 'history') fetchHistory();
             else if (viewId === 'appointments') {
-                const today = new Date(datePicker.value || Date.now());
-                fetchAppointments(today);
+                // **MODIFICADO** para passar a string diretamente
+                fetchAppointments(datePicker.value);
             }
         }
         
         // --- Lógica de Agendamentos ---
-        async function fetchAppointments(date) {
+        // **MODIFICADO** para receber a string da data diretamente
+        async function fetchAppointments(dateString) {
             appointmentsList.innerHTML = `<p class="text-gray-400">Carregando agendamentos...</p>`;
-            const dateString = date.toISOString().split('T')[0];
             try {
-                const response = await fetch(`${API_URL}/api/appointments?date=${dateString}`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (!response.ok) { if (response.status === 401 || response.status === 403) logout(); throw new Error('Falha ao buscar agendamentos.'); }
+                // A 'dateString' já está no formato correto (AAAA-MM-DD)
+                const response = await fetchApi(`/api/appointments?date=${dateString}`);
+                if (!response.ok) {
+                    throw new Error('Falha ao buscar agendamentos.');
+                }
                 const appointments = await response.json();
                 displayAppointments(appointments);
-            } catch (error) { appointmentsList.innerHTML = `<p class="text-red-400">Erro ao carregar agendamentos.</p>`; }
+            } catch (error) {
+                appointmentsList.innerHTML = `<p class="text-red-400">Erro ao carregar agendamentos.</p>`;
+            }
         }
 
         function displayAppointments(appointments) {
@@ -281,7 +308,10 @@
         async function openAppointmentModal() {
             appointmentModal.classList.remove('hidden');
             try {
-                const [clientsRes, servicesRes] = await Promise.all([ fetch(`${API_URL}/api/clients`, { headers: { 'Authorization': `Bearer ${token}` } }), fetch(`${API_URL}/api/services`, { headers: { 'Authorization': `Bearer ${token}` } }) ]);
+                const [clientsRes, servicesRes] = await Promise.all([
+                    fetchApi('/api/clients'),
+                    fetchApi('/api/services')
+                ]);
                 const clients = await clientsRes.json();
                 const services = await servicesRes.json();
                 clientSelect.innerHTML = '<option value="">Selecione um cliente</option>';
@@ -299,10 +329,10 @@
         async function handleCancelAppointment() {
             if (!currentAppointmentToCancel) return;
             try {
-                const response = await fetch(`${API_URL}/api/appointments/${currentAppointmentToCancel}/cancel`, { method: 'PATCH', headers: { 'Authorization': `Bearer ${token}` } });
+                const response = await fetchApi(`/api/appointments/${currentAppointmentToCancel}/cancel`, { method: 'PATCH' });
                 if (!response.ok) throw new Error('Falha ao cancelar.');
                 showSuccessToast('Agendamento cancelado!');
-                fetchAppointments(new Date(datePicker.value + 'T00:00:00'));
+                fetchAppointments(datePicker.value);
             } catch (error) { showSuccessToast('Erro ao cancelar.'); } finally { closeCancelModal(); }
         }
 
@@ -310,7 +340,7 @@
         async function fetchHistory() {
             historyList.innerHTML = `<p class="text-gray-400">Carregando histórico...</p>`;
             try {
-                const response = await fetch(`${API_URL}/api/appointments`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const response = await fetchApi('/api/appointments');
                 if (!response.ok) throw new Error('Falha ao buscar histórico.');
                 const appointments = await response.json();
                 displayHistory(appointments);
@@ -322,6 +352,7 @@
             if (appointments.length === 0) {
                 historyList.innerHTML = `<p class="text-gray-400 text-center py-10 bg-gray-800 rounded-lg">Nenhum agendamento no histórico.</p>`;
             } else {
+                appointments.sort((a, b) => new Date(b.appointment_time) - new Date(a.appointment_time)); // Ordena do mais recente para o mais antigo
                 appointments.forEach(app => {
                     const el = document.createElement('div');
                     const isCanceled = app.status === 'canceled';
@@ -330,7 +361,7 @@
                     el.className = `bg-gray-800 p-4 rounded-lg flex justify-between items-center ${isCanceled ? 'opacity-60' : ''}`;
                     el.innerHTML = `
                         <div class="flex items-center"><div class="w-24 text-center mr-4"><p class="font-bold text-white">${appointmentDate}</p><p class="text-sm text-gray-400">${formatTime(app.appointment_time)}</p></div><div><p class="font-semibold text-white">${app.client_name}</p><p class="text-sm text-gray-400">${app.service_name}</p></div></div>
-                        <div><span class="px-2 py-1 text-sm font-semibold rounded-full ${statusColor}">${app.status}</span></div>`;
+                        <div><span class="px-2 py-1 text-sm font-semibold rounded-full ${statusColor}">${app.status.charAt(0).toUpperCase() + app.status.slice(1)}</span></div>`;
                     historyList.appendChild(el);
                 });
             }
@@ -340,7 +371,7 @@
         async function fetchClients() {
             clientsList.innerHTML = `<p class="text-gray-400">Carregando clientes...</p>`;
             try {
-                const response = await fetch(`${API_URL}/api/clients`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const response = await fetchApi('/api/clients');
                 if (!response.ok) throw new Error('Falha ao buscar clientes.');
                 const clients = await response.json();
                 displayClients(clients);
@@ -383,7 +414,7 @@
         async function fetchServices() {
             servicesList.innerHTML = `<p class="text-gray-400">Carregando serviços...</p>`;
             try {
-                const response = await fetch(`${API_URL}/api/services`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const response = await fetchApi('/api/services');
                 if (!response.ok) throw new Error('Falha ao buscar serviços.');
                 const services = await response.json();
                 displayServices(services);
@@ -428,6 +459,7 @@
             deleteModalTitle.textContent = `Excluir ${type.charAt(0).toUpperCase() + type.slice(1)}`;
             deleteModalText.textContent = `Tem certeza que deseja excluir "${name}"? Esta ação não pode ser desfeita.`;
             deleteConfirmModal.classList.remove('hidden');
+
         }
 
         function closeDeleteModal() {
@@ -438,9 +470,9 @@
         async function handleConfirmDelete() {
             if (!itemToDelete.id || !itemToDelete.type) return;
             const { id, type } = itemToDelete;
-            const url = `${API_URL}/api/${type}s/${id}`;
+            const url = `/api/${type}s/${id}`;
             try {
-                const response = await fetch(url, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+                const response = await fetchApi(url, { method: 'DELETE' });
                 if (!response.ok) { throw new Error(`Falha ao excluir.`); }
                 showSuccessToast(`${type.charAt(0).toUpperCase() + type.slice(1)} excluído com sucesso!`);
                 if (type === 'client') fetchClients();
@@ -455,20 +487,29 @@
         addAppointmentButton.addEventListener('click', () => openAppointmentModal());
         cancelAppointmentBtn.addEventListener('click', closeAppointmentModal);
         appointmentModal.addEventListener('click', (e) => { if (e.target === appointmentModal) closeAppointmentModal(); });
-        datePicker.addEventListener('change', (e) => fetchAppointments(new Date(e.target.value + 'T00:00:00')));
+        datePicker.addEventListener('change', (e) => fetchAppointments(e.target.value));
         appointmentsList.addEventListener('click', (e) => { if (e.target.classList.contains('cancel-btn')) openCancelModal(e.target.dataset.appointmentId); });
         closeCancelModalBtn.addEventListener('click', closeCancelModal);
         confirmCancelBtn.addEventListener('click', handleCancelAppointment);
         appointmentForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const body = { client_id: clientSelect.value, service_id: serviceSelect.value, appointment_time: new Date(`${appointmentForm['appointment-date'].value}T${appointmentForm['appointment-time'].value}`).toISOString() };
+            const date = appointmentForm['appointment-date'].value;
+            const time = appointmentForm['appointment-time'].value;
+            // Combina data e hora e cria um objeto Date que será convertido para ISO string
+            const appointmentDateTime = new Date(`${date}T${time}`);
+
+            const body = { 
+                client_id: clientSelect.value, 
+                service_id: serviceSelect.value, 
+                appointment_time: appointmentDateTime.toISOString() 
+            };
             try {
-                const response = await fetch(`${API_URL}/api/appointments`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify(body) });
+                const response = await fetchApi('/api/appointments', { method: 'POST', body: JSON.stringify(body) });                
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Erro ao salvar.');
                 closeAppointmentModal();
                 showSuccessToast('Agendamento criado com sucesso!');
-                fetchAppointments(new Date(datePicker.value + 'T00:00:00'));
+                fetchAppointments(datePicker.value);
             } catch (error) { modalErrorMessage.textContent = error.message; modalErrorMessage.classList.remove('hidden'); }
         });
 
@@ -488,9 +529,9 @@
             const name = document.getElementById('client-name').value;
             const phone_number = document.getElementById('client-phone').value;
             const method = id ? 'PUT' : 'POST';
-            const url = id ? `${API_URL}/api/clients/${id}` : `${API_URL}/api/clients`;
+            const url = id ? `/api/clients/${id}` : '/api/clients';
             try {
-                const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ name, phone_number }) });
+                const response = await fetchApi(url, { method, body: JSON.stringify({ name, phone_number }) });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Erro ao salvar cliente.');
                 showSuccessToast(`Cliente ${id ? 'atualizado' : 'criado'} com sucesso!`);
@@ -515,9 +556,9 @@
             const name = document.getElementById('service-name').value;
             const duration_minutes = document.getElementById('service-duration').value;
             const method = id ? 'PUT' : 'POST';
-            const url = id ? `${API_URL}/api/services/${id}` : `${API_URL}/api/services`;
+            const url = id ? `/api/services/${id}` : '/api/services';
             try {
-                const response = await fetch(url, { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ name, duration_minutes }) });
+                const response = await fetchApi(url, { method, body: JSON.stringify({ name, duration_minutes }) });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message || 'Erro ao salvar serviço.');
                 showSuccessToast(`Serviço ${id ? 'atualizado' : 'criado'} com sucesso!`);
@@ -530,16 +571,24 @@
         closeDeleteModalBtn.addEventListener('click', closeDeleteModal);
 
         // --- Inicialização ---
-        document.addEventListener('DOMContentLoaded', () => {
-            const today = new Date();
-            datePicker.value = today.toISOString().split('T')[0];
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetchApi('/api/auth/me');
+                if (!response.ok) {
+                    throw new Error('Sessão inválida');
+                }
+                const userData = await response.json();
+                generateLogo(userData.name);
 
-        // Personaliza o logo com o nome da barbearia
-        const tokenData = parseJwt(token);
-        if (tokenData && tokenData.name) {
-            generateLogo(tokenData.name);
-        }
-            switchView('appointments');
+                // **MODIFICADO** para usar a nova função local e segura
+                const todayString = getLocalDateString();
+                datePicker.value = todayString;
+                switchView('appointments');
+
+            } catch (error) {
+                console.error("Erro de autenticação:", error);
+                logout();
+            }
         });
     </script>
 </body>
