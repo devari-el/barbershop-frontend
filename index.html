@@ -64,13 +64,12 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ email, password }),
-                    credentials: 'include' // permite envio de cookis
                 });
+                const data = await response.json();
                 if (response.ok) {
-                    // Se o login for bem-sucedido, o cookie já foi definido pelo servidor.
-                    window.location.href = './dashboard.html';
+                    localStorage.setItem('authToken', data.token);
+                    window.location.href = './dashboard.html'; // Redireciona para o dashboard
                 } else {
-                    const data = await response.json();
                     errorMessageDiv.textContent = data.message || 'Ocorreu um erro.';
                     errorMessageDiv.classList.remove('hidden');
                 }
