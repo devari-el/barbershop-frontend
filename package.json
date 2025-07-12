@@ -1,0 +1,24 @@
+{
+  "name": "barbershop-frontend",
+  "version": "1.0.0",
+  "description": "Bem-vindo ao projeto **Gestor de Barbearia**, uma solução web completa, construída do zero, para modernizar a gestão de agendamentos em barbearias.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "vite"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/devari-el/barbershop-frontend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/devari-el/barbershop-frontend/issues"
+  },
+  "homepage": "https://github.com/devari-el/barbershop-frontend#readme",
+  "dependencies": {
+    "vite": "^7.0.4"
+  }
+}
